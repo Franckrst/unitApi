@@ -31,7 +31,7 @@ const sshTunnel = function(options) {
                 function (err, stream) {
                     if (err) return reject(err); // SSH error: can also send error in promise ex. reject(err)
                     // use `sql` connection as usual
-                    resolve(stream);
+                    resolve({stream : stream,sshClient:sshClient});
                 });
         }).connect(options);
     });
@@ -49,9 +49,14 @@ const jsonBdd = function (json,options) {
         let connection;
         if (options.mysql.overSSH) { //tunnel ssh
             connection = sshTunnel(options.mysql.overSSH)
-                .then((stream) => {
-                    options.mysql.stream = stream;
-                    return mysqlConnect(options.mysql);
+                .then((sshData) => {
+                    options.mysql.stream = sshData.stream;
+                    return mysqlConnect(options.mysql).then((connection)=>{
+                        connection.on('close',function(){
+                            sshData.sshClient.end();
+                        })
+                        return connection;
+                    });
                 });
         } else {
             connection = mysqlConnect(options.mysql);
@@ -62,7 +67,11 @@ const jsonBdd = function (json,options) {
             for(let i = 0; i < options.query.length; i++){
                 queryPromise.push(mysqlQuery(options.query[i],connectionBdd));
             }
-            Promise.all(queryPromise).then(resolve, reject);
+            return Promise.all(queryPromise).then(resolve, reject).then((data)=>{
+                connectionBdd.end();
+                connectionBdd.emit('close');
+                return data;
+            });
         });
     });
 };

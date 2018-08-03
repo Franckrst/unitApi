@@ -9,9 +9,10 @@ const Capture = require('./capture');
 
 const source = yaml.safeLoad(fs.readFileSync('example.yml', 'utf8'));
 
+let result = [];
 // Groupe of test
 for (let i = 0; i < source.groupe.length; i++) {
-    let testPormise = new Promise(resolve => resolve());
+    let testPormise = new Promise(resolve => resolve());g
     let captureGroupe = new Capture();
     // Start test //source.groupe[i].test.length
     for (let x = 0; x < source.groupe[i].test.length; x++) {
@@ -22,7 +23,6 @@ for (let i = 0; i < source.groupe.length; i++) {
                 // Save result
                     .then((result) => source.groupe[i].test[x].result = result)
                     .then((result)=>{
-                        console.log('=>',result);
                         return result;
                     })
                     // Capture
@@ -34,7 +34,9 @@ for (let i = 0; i < source.groupe.length; i++) {
                     });
             }
         );
+        result.push(testPormise);
     }
-
-    //testPormise.finally(()=>console.log(source.groupe[i].test[0].result.status));
 }
+Promise.all(result).then((data)=>{
+    console.log(JSON.stringify(data));
+})
